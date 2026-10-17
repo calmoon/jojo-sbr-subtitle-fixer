@@ -12,6 +12,9 @@ For each video it:
 Subtitle files (.srt / .ass / .ssa) can also be dropped; they are fixed in
 place (running the fix twice is harmless).
 
+--check-wiki  checks JoJo Wiki for documented renames this version doesn't
+              handle yet, and warns if the name list needs updating.
+
 Spoiler safety: the console output never shows any name, only counts, cue
 numbers and timestamps.
 
@@ -24,6 +27,7 @@ import json
 import glob
 import shutil
 import subprocess
+import urllib.request
 
 if sys.stdout and hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -268,6 +272,95 @@ def fix_ass(content):
 
 
 # ==============================================================================
+# Wiki check
+# ==============================================================================
+WIKI_RAW_URL = "https://jojowiki.com/Template:Part_7_Name_Variants?action=raw"
+REPO_URL = "https://github.com/calmoon/jojo-sbr-subtitle-fixer"
+
+# English wiki rows that are deliberately not applied: same wording in the
+# Japanese original, or a styling of the series title.
+WIKI_NOT_RENAMES = {"Sound Man", '"He who plays sound"', "STEEL BALL RUN JoJo's Bizarre Adventure"}
+# Rows restored to a more specific original than their wiki section title.
+WIKI_EXPECTED = {
+    "Tomb of the Noise 1": "Tomb of the Boom 1",
+    "Snow Mountain's Spring": "Sugar Mountain's Spring",
+}
+
+
+def _split_wiki_cells(s):
+    """Split template arguments on '|' outside nested {{...}} / [[...]]."""
+    parts, depth, cur, i = [], 0, "", 0
+    while i < len(s):
+        two = s[i:i + 2]
+        if two in ("{{", "[["):
+            depth, cur, i = depth + 1, cur + two, i + 2
+        elif two in ("}}", "]]"):
+            depth, cur, i = depth - 1, cur + two, i + 2
+        else:
+            if s[i] == "|" and depth == 0:
+                parts.append(cur)
+                cur = ""
+            else:
+                cur += s[i]
+            i += 1
+    parts.append(cur)
+    return parts
+
+
+def wiki_renames(page_source):
+    """Parse the wiki page source into [(localized English name, original name)]."""
+    lines = page_source.split("\n")
+    official, renames = None, []
+    for i, line in enumerate(lines):
+        m = re.match(r"^\|(.+)\|$", line)
+        if m and i + 1 < len(lines) and lines[i + 1].startswith("{{NV"):
+            official = re.sub(r" \(Stand\)$", "", m.group(1))
+            continue
+        if official is None or not (line.lower().startswith("{{row") and "{{Flag|USA}}" in line):
+            continue
+        cells = _split_wiki_cells(line[2:-2])
+        if len(cells) < 6:
+            continue
+        variant = re.sub(r"\{\{Nihongo\|([^|}]*)\|.*", r"\1", cells[5])
+        variant = re.sub(r"\[\[(?:[^|\]]*\|)?([^\]]*)\]\]", r"\1", variant).strip()
+        if variant == official or variant in WIKI_NOT_RENAMES or variant.startswith("{{"):
+            continue  # "{{..." rows are abbreviations identical to the original
+        renames.append((variant, WIKI_EXPECTED.get(variant, official)))
+    return renames
+
+
+def handles_rename(localized, original):
+    """True if the name is restored both in dialogue and in an ALL CAPS eyecatch."""
+    return (fix_text(f"We saw {localized} today.", [])[0] == f"We saw {original} today."
+            and fix_text(f"[STAND NAME] {localized.upper()}", [])[0] == f"[STAND NAME] {original.upper()}")
+
+
+def check_wiki():
+    """Warn if JoJo Wiki documents renames this version doesn't handle. Prints no names."""
+    print("\nChecking JoJo Wiki for documented renames...")
+    try:
+        req = urllib.request.Request(WIKI_RAW_URL, headers={"User-Agent": "Mozilla/5.0 (jojo-sbr-subtitle-fixer)"})
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            source = resp.read().decode("utf-8", errors="replace")
+    except Exception as e:
+        print(f"  [ERROR] Could not download the wiki page: {e}")
+        return False
+    renames = wiki_renames(source)
+    if len(renames) < len(NAMES):
+        print("  [WARNING] Found fewer renames on the wiki than expected; the page layout may have")
+        print("  changed, so this check couldn't be done reliably.")
+        return False
+    missing = sum(not handles_rename(localized, original) for localized, original in renames)
+    if missing:
+        print(f"  [WARNING] {missing} of {len(renames)} renames documented on the wiki are not handled by")
+        print(f"  this version. The name list probably needs updating: {REPO_URL}")
+        print("  (Names aren't shown, to avoid spoilers. tests/test_fixer.py --wiki lists them.)")
+        return False
+    print(f"  Up to date: all {len(renames)} renames documented on the wiki are handled.")
+    return True
+
+
+# ==============================================================================
 # FFmpeg helpers
 # ==============================================================================
 def find_tool(tool_name):
@@ -412,11 +505,16 @@ def collect_targets(args):
 
 
 def main():
-    args = [a for a in sys.argv[1:] if a != "--no-pause"]
+    args = [a for a in sys.argv[1:] if a not in ("--no-pause", "--check-wiki")]
     print("=" * 60)
     print(" JoJo's Bizarre Adventure: Steel Ball Run")
     print(" Subtitle Extractor & Original Name Restorer")
     print("=" * 60)
+
+    if "--check-wiki" in sys.argv:
+        up_to_date = check_wiki()
+        if not args:  # only the check was asked for
+            return 0 if up_to_date else 1
 
     # No arguments (double-click): process the videos in this script's folder.
     targets = collect_targets(args or [os.path.dirname(os.path.abspath(__file__))])

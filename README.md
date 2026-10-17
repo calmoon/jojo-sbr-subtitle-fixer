@@ -36,6 +36,17 @@ Other ways to run it:
 - Drag a `.srt` / `.ass` file on it to fix that file in place. Running the fix twice is harmless.
 - From a terminal: `python fix_jojo_subtitles.py "episode.mkv" [more files or folders] [--no-pause]`
 
+### Checking for missing names
+
+```
+python fix_jojo_subtitles.py --check-wiki
+```
+
+This downloads JoJo Wiki's name list and warns you if it documents renames this
+version doesn't handle yet, which means the script probably needs updating. It
+prints only counts, never names. Add file or folder paths after it to check
+first and then process them as usual.
+
 ### Words that might be names
 
 A few of the localized names are also ordinary English words. Lowercase uses are
@@ -56,8 +67,8 @@ python tests/test_fixer.py          # edge cases
 python tests/test_fixer.py --wiki   # also check every rename on the wiki page (needs internet)
 ```
 
-The `--wiki` check downloads the wiki page and confirms that every documented
-English rename is restored, which shows when the wiki has new entries to add.
+The `--wiki` option runs the same check as `--check-wiki`, but lists the missing
+names (spoilers) so you can add them to `NAMES`.
 
 ## License
 

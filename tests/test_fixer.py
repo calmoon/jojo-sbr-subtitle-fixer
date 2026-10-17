@@ -7,7 +7,6 @@ Tests for fix_jojo_subtitles.py.
 Only failures print names (spoilers).
 """
 import os
-import re
 import sys
 import urllib.request
 
@@ -16,8 +15,6 @@ import fix_jojo_subtitles as fx  # noqa: E402
 
 if sys.stdout and hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-
-WIKI_URL = "https://jojowiki.com/Template:Part_7_Name_Variants?action=raw"
 
 # (input, expected output, expect a "review" note)
 CASES = [
@@ -65,64 +62,17 @@ def test_cases():
     return fails
 
 
-def _split_top(s):
-    parts, depth, cur, i = [], 0, "", 0
-    while i < len(s):
-        two = s[i:i + 2]
-        if two in ("{{", "[["):
-            depth, cur, i = depth + 1, cur + two, i + 2
-        elif two in ("}}", "]]"):
-            depth, cur, i = depth - 1, cur + two, i + 2
-        else:
-            if s[i] == "|" and depth == 0:
-                parts.append(cur)
-                cur = ""
-            else:
-                cur += s[i]
-            i += 1
-    parts.append(cur)
-    return parts
-
-
-def _plain(s):
-    s = re.sub(r"\{\{Nihongo\|([^|}]*)\|.*", r"\1", s)
-    return re.sub(r"\[\[(?:[^|\]]*\|)?([^\]]*)\]\]", r"\1", s).strip()
-
-
-# Wiki rows that are not renames of an original name.
-NOT_RENAMES = {
-    "Sound Man", '"He who plays sound"',          # same wording in the Japanese original
-    "STEEL BALL RUN JoJo's Bizarre Adventure",    # series title styling
-}
-# Rows whose restored form is a more specific original than the wiki section title.
-EXPECTED = {
-    "Tomb of the Noise 1": "Tomb of the Boom 1",
-    "Snow Mountain's Spring": "Sugar Mountain's Spring",
-}
-
-
 def test_wiki():
-    req = urllib.request.Request(WIKI_URL, headers={"User-Agent": "Mozilla/5.0"})
-    lines = urllib.request.urlopen(req, timeout=30).read().decode("utf-8").split("\n")
-    official, checked, fails = None, 0, 0
-    for i, line in enumerate(lines):
-        m = re.match(r"^\|(.+)\|$", line)
-        if m and i + 1 < len(lines) and lines[i + 1].startswith("{{NV"):
-            official = re.sub(r" \(Stand\)$", "", m.group(1))
-            continue
-        if not (line.lower().startswith("{{row") and "{{Flag|USA}}" in line):
-            continue
-        variant = _plain(_split_top(line[2:-2])[5])
-        if variant == official or variant in NOT_RENAMES or variant.startswith("{{"):
-            continue
-        want = EXPECTED.get(variant, official)
-        checked += 1
-        got = fx.fix_text(f"We saw {variant} today.", [])[0]
-        got_caps = fx.fix_text(f"[STAND NAME] {variant.upper()}", [])[0]
-        if got != f"We saw {want} today." or got_caps != f"[STAND NAME] {want.upper()}":
+    """Same check as `fix_jojo_subtitles.py --check-wiki`, but lists the missing names."""
+    req = urllib.request.Request(fx.WIKI_RAW_URL, headers={"User-Agent": "Mozilla/5.0"})
+    source = urllib.request.urlopen(req, timeout=30).read().decode("utf-8")
+    renames = fx.wiki_renames(source)
+    fails = 0
+    for localized, original in renames:
+        if not fx.handles_rename(localized, original):
             fails += 1
-            print(f"FAIL wiki: {variant!r} -> {got!r} / {got_caps!r} (expected {want!r})")
-    print(f"Wiki renames: {checked - fails}/{checked} restored")
+            print(f"FAIL wiki: {localized!r} is not restored to {original!r}")
+    print(f"Wiki renames: {len(renames) - fails}/{len(renames)} restored")
     return fails
 
 
