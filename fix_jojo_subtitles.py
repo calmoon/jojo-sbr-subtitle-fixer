@@ -544,8 +544,9 @@ def main():
         print("Usage: drag episode files (.mkv, .mp4, ...) or folders onto this script.")
         return 1
 
-    # Only an outdated name list needs a decision; a failed check just warned above.
-    if up_to_date is False and not confirm(f"\nProcess {len(targets)} file(s) anyway?"):
+    # Unless the check confirmed the name list is complete, let the user decide.
+    if ("--check-wiki" in sys.argv and up_to_date is not True
+            and not confirm(f"\nProcess {len(targets)} file(s) anyway?")):
         print("Nothing processed.")
         return 1
 
