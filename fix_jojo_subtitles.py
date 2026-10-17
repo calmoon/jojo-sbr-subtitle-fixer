@@ -336,7 +336,10 @@ def handles_rename(localized, original):
 
 
 def check_wiki():
-    """Warn if JoJo Wiki documents renames this version doesn't handle. Prints no names."""
+    """Warn if JoJo Wiki documents renames this version doesn't handle. Prints no names.
+
+    Returns True if up to date, False if renames are missing, None if the check failed.
+    """
     print("\nChecking JoJo Wiki for documented renames...")
     try:
         req = urllib.request.Request(WIKI_RAW_URL, headers={"User-Agent": "Mozilla/5.0 (jojo-sbr-subtitle-fixer)"})
@@ -344,12 +347,12 @@ def check_wiki():
             source = resp.read().decode("utf-8", errors="replace")
     except Exception as e:
         print(f"  [ERROR] Could not download the wiki page: {e}")
-        return False
+        return None
     renames = wiki_renames(source)
     if len(renames) < len(NAMES):
         print("  [WARNING] Found fewer renames on the wiki than expected; the page layout may have")
         print("  changed, so this check couldn't be done reliably.")
-        return False
+        return None
     missing = sum(not handles_rename(localized, original) for localized, original in renames)
     if missing:
         print(f"  [WARNING] {missing} of {len(renames)} renames documented on the wiki are not handled by")
@@ -528,10 +531,10 @@ def main():
     print(" Subtitle Extractor & Original Name Restorer")
     print("=" * 60)
 
-    check_only = "--check-wiki" in sys.argv and not args
+    up_to_date = None
     if "--check-wiki" in sys.argv:
         up_to_date = check_wiki()
-        if check_only:
+        if not args:  # only the check was asked for
             return 0 if up_to_date else 1
 
     # No arguments (double-click): process the videos in this script's folder.
@@ -541,9 +544,10 @@ def main():
         print("Usage: drag episode files (.mkv, .mp4, ...) or folders onto this script.")
         return 1
 
-    if "--check-wiki" in sys.argv and not confirm(f"\nProcess {len(targets)} file(s) now?"):
+    # Only an outdated name list needs a decision; a failed check just warned above.
+    if up_to_date is False and not confirm(f"\nProcess {len(targets)} file(s) anyway?"):
         print("Nothing processed.")
-        return 0 if up_to_date else 1
+        return 1
 
     needs_ffmpeg = any(os.path.splitext(t)[1].lower() not in SUB_EXTS for t in targets)
     ffmpeg_exe = find_tool("ffmpeg") if needs_ffmpeg else None
