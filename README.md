@@ -58,3 +58,7 @@ python tests/test_fixer.py --wiki   # also check every rename on the wiki page (
 
 The `--wiki` check downloads the wiki page and confirms that every documented
 English rename is restored, which shows when the wiki has new entries to add.
+
+## License
+
+[MIT](LICENSE)
