@@ -44,8 +44,8 @@ python fix_jojo_subtitles.py --check-wiki
 
 This downloads JoJo Wiki's name list and warns you if it documents renames this
 version doesn't handle yet, which means the script probably needs updating. It
-prints only counts, never names. Add file or folder paths after it to check
-first and then process them as usual.
+prints only counts, never names. If you also pass files or folders, it runs the
+check first and then asks whether to process them (`y`/`n`).
 
 ### Words that might be names
 

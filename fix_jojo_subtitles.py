@@ -504,6 +504,23 @@ def collect_targets(args):
     return targets
 
 
+def confirm(question):
+    """Ask until the user answers yes or no. Without an interactive console, answers no."""
+    if not (sys.stdin and sys.stdin.isatty()):
+        print(f"{question} No answer possible (no interactive console), so: no.")
+        return False
+    while True:
+        try:
+            answer = input(f"{question} [y/n] ").strip().lower()
+        except EOFError:
+            return False
+        if answer in ("y", "yes"):
+            return True
+        if answer in ("n", "no"):
+            return False
+        print("Please answer y or n.")
+
+
 def main():
     args = [a for a in sys.argv[1:] if a not in ("--no-pause", "--check-wiki")]
     print("=" * 60)
@@ -511,9 +528,10 @@ def main():
     print(" Subtitle Extractor & Original Name Restorer")
     print("=" * 60)
 
+    check_only = "--check-wiki" in sys.argv and not args
     if "--check-wiki" in sys.argv:
         up_to_date = check_wiki()
-        if not args:  # only the check was asked for
+        if check_only:
             return 0 if up_to_date else 1
 
     # No arguments (double-click): process the videos in this script's folder.
@@ -522,6 +540,10 @@ def main():
         print("No video files found.")
         print("Usage: drag episode files (.mkv, .mp4, ...) or folders onto this script.")
         return 1
+
+    if "--check-wiki" in sys.argv and not confirm(f"\nProcess {len(targets)} file(s) now?"):
+        print("Nothing processed.")
+        return 0 if up_to_date else 1
 
     needs_ffmpeg = any(os.path.splitext(t)[1].lower() not in SUB_EXTS for t in targets)
     ffmpeg_exe = find_tool("ffmpeg") if needs_ffmpeg else None
