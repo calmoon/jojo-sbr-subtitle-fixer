@@ -43,7 +43,7 @@ if sys.stdout and hasattr(sys.stdout, "reconfigure"):
 # ==============================================================================
 NAMES = [
     # Stands / eyecatches
-    (("Tic Tac Boom",), "Boku no Rhythm wo Kiitekure"),
+    (("Tic Tac Boom", "Tic tac boom"), "Boku no Rhythm wo Kiitekure"),
     (("Tomb of the Noise 123", "Tomb of the Noise 1 2 3", "Tomb of the Noise 1-2-3"), "Tomb of the Boom 1 2 3"),
     (("Tomb of the Noise",), "Tomb of the Boom"),
     (("Lasso Blues",), "Oh! Lonesome Me"),
@@ -66,6 +66,7 @@ NAMES = [
     (("The World",), "THE WORLD"),
 
     # Characters / horses / racers
+    (("Joe Kid",), "Joe Kidd"),
     (("Benny Boomboom",), "Benjamin Boomboom"),
     (("Andrew",), "Andre"),
     (("Laurence",), "L.A."),
@@ -283,7 +284,10 @@ WIKI_NOT_RENAMES = {"Sound Man", '"He who plays sound"', "STEEL BALL RUN JoJo's 
 # Rows restored to a more specific original than their wiki section title.
 WIKI_EXPECTED = {
     "Tomb of the Noise 1": "Tomb of the Boom 1",
+    "Tomb of the Noise 2": "Tomb of the Boom 2",
+    "Tomb of the Noise 3": "Tomb of the Boom 3",
     "Snow Mountain's Spring": "Sugar Mountain's Spring",
+    "Joe Kid": "Joe Kidd",
 }
 
 

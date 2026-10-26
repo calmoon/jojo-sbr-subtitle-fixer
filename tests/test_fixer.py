@@ -37,6 +37,10 @@ CASES = [
     ("Get on Giddyup now.", "Get on Gets Up now.", False),
     ("The World is wide.", "The World is wide.", True),
     ("THE WORLD", "THE WORLD", False),
+    ("His Stand, Tic tac boom!", "His Stand, Boku no Rhythm wo Kiitekure!", False),
+    ("tic tac boom", "tic tac boom", False),
+    ("They called him Joe Kid.", "They called him Joe Kidd.", False),
+    ("Joe Kidd again.", "Joe Kidd again.", False),
 ]
 
 SRT = "1\n00:00:01,000 --> 00:00:02,000\nI saw Sand Man.\n\n2\n00:00:03,000 --> 00:00:04,000\nNothing here.\n"
